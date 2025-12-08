@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.1,user-scalable=yes">
+  <meta name="theme-color" content="#050510">
+  <title>Simulador Energisa vs Órigo — Android</title>
+  <style>
+    :root{
+      --bg:#050510; --card: rgba(22,26,40,0.82);
+      --energisa:#ff8c00; --origo:#bc13fe; --text:#e6eef8; --dim:#9aa8bd;
+      --success:#00ff9d; --glass-border: 1px solid rgba(255,255,255,0.06); --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;
+      background:var(--bg); color:var(--text); display:flex; flex-direction:column; min-height:100vh;
+      padding:12px;
+    }
+    .app{max-width:1000px;width:100%;margin:0 auto;flex:1 1 auto;display:flex;flex-direction:column;gap:18px}
+    header{text-align:center;padding:8px 4px}
+    h1{margin:0;font-size:20px;letter-spacing:1px;line-height:1.05}
+    .subtitle{margin-top:6px;color:var(--dim);font-size:12px}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:var(--card);border:var(--glass-border);padding:16px;border-radius:var(--radius);backdrop-filter: blur(8px)}
+    .card h2{margin:0 0 8px 0;font-size:14px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+    .form-row{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+    label{ font-size:13px; color:var(--dim) }
+    input.input, select.input{ width:100%; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.25); color:var(--text); font-size:15px; outline:none; }
+    button#btnCalcular{ width:100%; margin-top:12px; padding:14px; background: linear-gradient(90deg, #ff8c00, #bc13fe); color:white; font-size:17px; font-weight:700; border:none; border-radius:12px; cursor:pointer; letter-spacing:0.5px; }
+    button#btnCalcular:active{ opacity:0.85; transform:scale(0.98); }
+    .warning{ font-size:12px; color:#ffb347; display:none }
+    .results .row{ display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.03); font-size:15px; }
+    .results .total{ font-weight:700; padding-top:12px; font-size:17px; color:var(--energisa); }
+    .mini-table{ width:100%; margin-top:8px; font-size:14px; border-collapse:collapse; }
+    .mini-table td{ padding:8px 0; color:var(--dim); }
+    .mini-table .val{ text-align:right; font-weight:600; color:var(--text); }
+    .economy{ text-align:center; padding:12px; border-radius:12px; border:1px solid rgba(0,255,157,0.08); background:linear-gradient(135deg, rgba(0,255,157,0.03), rgba(0,0,0,0.45)); }
+    .economy .value{ font-size:22px; font-weight:800; color:var(--success); }
+    footer{ font-size:12px; text-align:center; color:var(--dim); padding:10px 0 20px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Simulador <span style="color:var(--energisa)">Energisa</span> vs <span style="color:var(--origo)">Órigo</span></h1>
+      <div class="subtitle">Cálculo apenas ao clicar no botão</div>
+    </header>
+
+    <main class="grid">
+      <!-- PARÂMETROS -->
+      <section class="card">
+        <h2>Parâmetros da Conta</h2>
+
+        <div class="form-row">
+          <label>Tipo de Rede</label>
+          <select id="tensao" class="input">
+            <option value="" disabled selected>Selecione...</option>
+            <option value="M">Monofásico (30 kWh)</option>
+            <option value="B">Bifásico (50 kWh)</option>
+            <option value="T">Trifásico (100 kWh)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Consumo Mensal (kWh)</label>
+          <input id="consumo" class="input" type="number" inputmode="decimal">
+        </div>
+
+        <div class="form-row">
+          <label>Valor Unitário do kWh (R$)</label>
+          <input id="precoKwh" class="input" type="number" step="0.0001">
+        </div>
+
+        <div class="form-row">
+          <label>Bandeira (R$)</label>
+          <input id="bandeira" class="input" type="number" step="0.01">
+        </div>
+
+        <div class="form-row">
+          <label>Iluminação Pública (R$)</label>
+          <input id="ilumPub" class="input" type="number" step="0.01">
+        </div>
+
+        <div class="form-row">
+          <label>Outras Cobranças (R$)</label>
+          <input id="extras" class="input" type="number" step="0.01">
+        </div>
+
+        <div class="form-row">
+          <label>Desconto Órigo (%) — Máx 35%</label>
+          <input id="descOrigo" class="input" type="number" min="0" max="100">
+          <div id="avisoLimite" class="warning">⚠️ Limite máximo aplicado: 35%</div>
+        </div>
+
+        <!-- BOTÃO CALCULAR -->
+        <button id="btnCalcular" type="button">Calcular</button>
+      </section>
+
+      <!-- RESULTADOS -->
+      <section>
+        <div class="card results">
+          <h2>Conta Atual (Energisa)</h2>
+          <div class="row"><span>Consumo</span><span id="res-consumo-val">R$ 0,00</span></div>
+          <div class="row"><span>Taxas</span><span id="res-taxas-val">R$ 0,00</span></div>
+          <div class="row total"><span>TOTAL HOJE</span><span id="res-total-hoje">R$ 0,00</span></div>
+
+          <div style="font-size:12px; margin-top:6px; text-align:right; color:var(--dim)">
+            ICMS: <span id="res-icms">R$ 0,00</span> |
+            PIS: <span id="res-pis">R$ 0,00</span> |
+            COFINS: <span id="res-cofins">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h2>Cenário Órigo</h2>
+
+          <table class="mini-table">
+            <tr><td>Crédito</td><td class="val"><span id="res-credito">R$ 0,00</span></td></tr>
+            <tr><td>A pagar Energisa</td><td class="val"><span id="res-total-energisa-residual">R$ 0,00</span></td></tr>
+          </table>
+
+          <div class="row total" style="margin-top:6px">
+            <span>TOTAL COMBINADO</span>
+            <span id="res-total-combinado">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div class="card economy" style="margin-top:12px">
+          <div style="font-size:12px">Economia Mensal</div>
+          <div class="value" id="res-eco-mensal">R$ 0,00</div>
+        </div>
+      </section>
+    </main>
+
+    <footer>Design por André Leonardo Vale — 2025</footer>
+  </div>
+
+  <script>
+    // formatação BRL
+    const formatBRL = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+
+    // variáveis de elementos (serão preenchidas no DOMContentLoaded)
+    let tensaoEl, consumoEl, precoKwhEl, bandeiraEl, ilumPubEl, extrasEl, descOrigoEl, avisoLimiteEl;
+    let resConsumoValEl, resTaxasValEl, resTotalHojeEl, resIcmsEl, resPisEl, resCofinsEl;
+    let resCreditoEl, resTotalEnergisaResidualEl, resTotalCombinadoEl, resEcoMensalEl;
+    let btnCalcularEl;
+
+    // prevenção de double-tap (touch + click)
+    let lastCall = 0;
+    const debounceMs = 600; // ignora chamadas muito próximas
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // obter elementos
+      tensaoEl = document.getElementById('tensao');
+      consumoEl = document.getElementById('consumo');
+      precoKwhEl = document.getElementById('precoKwh');
+      bandeiraEl = document.getElementById('bandeira');
+      ilumPubEl = document.getElementById('ilumPub');
+      extrasEl = document.getElementById('extras');
+      descOrigoEl = document.getElementById('descOrigo');
+      avisoLimiteEl = document.getElementById('avisoLimite');
+
+      resConsumoValEl = document.getElementById('res-consumo-val');
+      resTaxasValEl = document.getElementById('res-taxas-val');
+      resTotalHojeEl = document.getElementById('res-total-hoje');
+      resIcmsEl = document.getElementById('res-icms');
+      resPisEl = document.getElementById('res-pis');
+      resCofinsEl = document.getElementById('res-cofins');
+
+      resCreditoEl = document.getElementById('res-credito');
+      resTotalEnergisaResidualEl = document.getElementById('res-total-energisa-residual');
+      resTotalCombinadoEl = document.getElementById('res-total-combinado');
+      resEcoMensalEl = document.getElementById('res-eco-mensal');
+
+      btnCalcularEl = document.getElementById('btnCalcular');
+
+      // ligar eventos: click é suficiente para a grande maioria, mas aceitamos touchend também
+      btnCalcularEl.addEventListener('click', safeCalcular, {passive:true});
+      btnCalcularEl.addEventListener('touchend', safeCalcular, {passive:true});
+      // permitir Enter nos campos numéricos (opcional)
+      [consumoEl, precoKwhEl, bandeiraEl, ilumPubEl, extrasEl, descOrigoEl].forEach(inp=>{
+        inp.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter'){ safeCalcular(e); }
+        });
+      });
+    });
+
+    function safeCalcular(e){
+      const now = Date.now();
+      if(now - lastCall < debounceMs) {
+        // ignorar chamadas muito próximas (prevenir duplo disparo em mobile)
+        return;
+      }
+      lastCall = now;
+      // pequena proteção: evitar submit default se ocorrer
+      if(e && typeof e.preventDefault === 'function') e.preventDefault();
+      calcular();
+    }
+
+    function calcular(){
+      const tensao = (tensaoEl.value || '');
+      const consumo = parseFloat(consumoEl.value) || 0;
+      const precoKwh = parseFloat(precoKwhEl.value) || 0;
+      const bandeira = parseFloat(bandeiraEl.value) || 0;
+      const ilumPub = parseFloat(ilumPubEl.value) || 0;
+      const extras = parseFloat(extrasEl.value) || 0;
+      let desc = parseFloat(descOrigoEl.value) || 0;
+
+      if(desc > 35){
+        desc = 35;
+        avisoLimiteEl.style.display = "block";
+      } else {
+        avisoLimiteEl.style.display = "none";
+      }
+
+      const kwhMinMap = {M:30, B:50, T:100};
+      const kwhMin = kwhMinMap[tensao] || 0;
+
+      const valConsumo = consumo * precoKwh;
+      const totalTaxas = bandeira + ilumPub + extras;
+      const totalHoje = valConsumo + totalTaxas;
+
+      // impostos (mantive a lógica original)
+      const icms = (valConsumo + bandeira) * 0.17;
+      const cofins = (valConsumo + bandeira - icms) * 0.068401;
+      const pis = (valConsumo + bandeira - icms) * 0.014850;
+
+      let injetada = consumo - kwhMin;
+      if(injetada < 0) injetada = 0;
+
+      const credito = (0.8781 * injetada) * -1;
+      let energisaResidual = valConsumo + credito + totalTaxas;
+      if(energisaResidual < 0) energisaResidual = 0;
+
+      const valorOrigo = (0.8781 * ((100 - desc) / 100)) * injetada;
+      const totalCombinado = energisaResidual + valorOrigo;
+
+      // atualizar UI
+      resConsumoValEl.innerText = formatBRL(valConsumo);
+      resTaxasValEl.innerText = formatBRL(totalTaxas);
+      resTotalHojeEl.innerText = formatBRL(totalHoje);
+
+      resIcmsEl.innerText = formatBRL(icms);
+      resPisEl.innerText = formatBRL(pis);
+      resCofinsEl.innerText = formatBRL(cofins);
+
+      resCreditoEl.innerText = formatBRL(credito);
+      resTotalEnergisaResidualEl.innerText = formatBRL(energisaResidual);
+      resTotalCombinadoEl.innerText = formatBRL(totalCombinado);
+
+      resEcoMensalEl.innerText = formatBRL(totalHoje - totalCombinado);
+    }
+  </script>
+</body>
+</html>
